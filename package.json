@@ -1,0 +1,20 @@
+{
+  "name": "react-cms-table",
+  "version": "1.0.0",
+  "description": "React CMS Table",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "React",
+    "CMS",
+    "tables"
+  ],
+  "author": "Matt O'Connell <matthew.j.oconnell1@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oconn/react-cms-table.git"
+  },
+  "license": "MIT"
+}

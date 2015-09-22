@@ -1,0 +1,21 @@
+# OS
+__MACOSX
+.DS_Store
+
+# Vim ignore
+*.sw[pio]
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+*~
+
+# JS
+npm-debug.log
+node_modules/*
+client/public/*
+
+# MISC
+
+docs/*
