@@ -1,243 +1,340 @@
 import React, {Component, PropTypes} from 'react';
-import {connect} from 'react-redux';
-
 import R from 'ramda';
-
-import AddRecordButton from 'components/cms/add_record_button';
-import EditTableButton from 'components/cms/edit_table_button';
-import CMSTabelSearcher from 'components/cms/table_searcher';
-import CMSTable from 'components/cms/table';
-
-import PageSubHeader from 'components/typography/page_sub_header';
-
-import {dispatchLightbox, resetLightbox, dispatchAlert} from 'actions/ui';
-import {updateCMSSetting} from 'actions/cms';
-
-import loading from 'decorators/loading';
-
-import * as Collection from 'helpers/collection';
+import * as U from 'utils';
+import {IMG_BASE} from 'constants';
+import {getById} from 'helpers/collection';
+import * as CMSHelpers from 'helpers/cms';
+import EntryDetailsLightbox from './entry_details';
 
 /**
- * The `cmsViewCreator` is responsible for creating a CMS view
- * that has the ability to perform CRUD operations on any model.
+ * Flexable table that takes a data set and constructs a table
+ * based on that data.
  *
- * @param {String} cmsName the cms name must be unique and will
- * match the name of the cmsSetting record in the cmsSettings
- * collection in the database
- * @param {Object} options options hash
- * @function cmsViewCreator
- * @return {Class} CMSView
+ * @class CMSTable
  */
-const cmsViewCreator = (cmsName, options) => {
+export default class CMSTable extends Component {
+
+    static propTypes = {
+        actions: PropTypes.shape({
+            details: PropTypes.bool,
+            edit: PropTypes.shape({
+                action: PropTypes.func.isRequired,
+                component: PropTypes.func.isRequired
+            }),
+            remove: PropTypes.shape({
+                action: PropTypes.func.isRequired,
+                alert: PropTypes.object
+            })
+        }),
+        alias: PropTypes.object.isRequired,
+        data: PropTypes.array.isRequired,
+        defaultSort: PropTypes.string,
+        dispatchAlert: PropTypes.func.isRequired,
+        dispatchLightbox: PropTypes.func.isRequired,
+        filter: PropTypes.string.isRequired,
+        format: PropTypes.object.isRequired,
+        name: PropTypes.string.isRequired,
+        resetLightbox: PropTypes.func.isRequired,
+        visableFields: PropTypes.array.isRequired
+    }
+
+    static defaultProps = {
+        // Sets aliases for column names
+        alias: {},
+        // Determins if actions can be taken on the data
+        actions: {},
+        // Sets a column to sort on
+        defaultSort: null,
+        // Used to format cell data
+        format: {},
+        // Sets fields to be shown
+        visableFields: []
+    }
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            headers: this.getHeaders(props.data),
+            sort: props.defaultSort,
+            sortAscending: true
+        };
+
+        this.sortData = this.sortData.bind(this);
+        this.filterData = this.filterData.bind(this);
+    }
+
     /**
-     * Lightly wraps the CMSTable component to provide a cleaner
-     * interface.
+     * Determins all possible headers by reducing over the data.
      *
-     * @class CMSTableWrapper
+     * @param {Array} data All the table data
+     * @method renderHeaders
+     * @return {Array} header names
      */
-    @loading('request') class CMSTableWrapper extends Component {
-
-        static propTypes = {
-            dispatchAlert: PropTypes.func.isRequired,
-            dispatchLightbox: PropTypes.func.isRequired,
-            filter: PropTypes.string.isRequired,
-            form: PropTypes.func,
-            recordName: PropTypes.string.isRequired,
-            removeRecordAction: PropTypes.func,
-            removeRecordPrompt: PropTypes.object,
-            request: PropTypes.object.isRequired,
-            resetLightbox: PropTypes.func.isRequired,
-            settings: PropTypes.object.isRequired,
-            showDetails: PropTypes.bool.isRequired,
-            updateRecordAction: PropTypes.func
+    getHeaders(data = []) {
+        if (R.not(R.isArrayLike(data))) {
+            throw new Error('Data must be an array');
         }
 
-        static defaultProps = {
-            settings: {
-                aliases: [],
-                defaultSort: null,
-                name: null,
-                visableFields: []
-            },
-            showDetails: true
+        const allHeaders = CMSHelpers.getAllPropsFromData(data);
+
+        return R.filter(header => {
+            return R.contains(header, this.props.visableFields);
+        }, allHeaders);
+    }
+
+    /**
+     * Sorts data by selected column
+     *
+     * @param {Array} data data
+     * @method sortData
+     * @return {Array} sorted data
+     */
+    sortData(data = []) {
+        if (R.not(R.isArrayLike(data))) {
+            throw new Error('Data must be an array');
         }
 
-        constructor(props) {
-            super(props);
+        return R.sort((a, b) => {
+            const valueA = a[this.state.sort] || '',
+                valueB = b[this.state.sort] || '';
 
-            this.hasConfigFile = !!props.settings.name;
+            return this.state.sortAscending ?
+                valueA < valueB ? -1 : valueA > valueB ? 1 : 0 :
+                valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+        }, data)
+    }
+
+    /**
+     * Filters data by comparing each records props to the
+     * filter string passed to props.
+     *
+     * @param {Array} data data
+     * @method filterData
+     * @return {Array} filtered data
+     */
+    filterData(data) {
+        return R.filter(record => {
+            const values = R.values(record);
+
+            return R.reduce((memo, val) => {
+                return R.test(new RegExp(this.props.filter, 'i'), val) ? true : memo;
+            }, false, values);
+        }, data);
+    }
+
+    /**
+     * Formats the data to display to the table
+     *
+     * @param {Array} data data
+     * @method formatData
+     * @return {Array} data
+     */
+    formatData(data) {
+        const filter = this.props.filter ? this.filterData : R.identity,
+            sort = this.state.sort ? this.sortData : R.identity;
+
+        return R.compose(
+            sort,
+            filter
+        )(data);
+    }
+
+    /**
+     * Updates the sort to be used on the table
+     *
+     * @param {String} sort name of proporty to sort on
+     * @method updateSort
+     * @return {Undefined} undefined
+     */
+    updateSort(sort) {
+        this.setState({
+            sort: sort,
+            sortAscending: this.state.sort === sort ? !this.state.sortAscending : true
+        });
+    }
+
+    /**
+     * Renders the headers for the table
+     *
+     * @method renderHeaders
+     * @return {JSX} header
+     */
+    renderHeaders() {
+        return (
+            <tr>
+                {R.map(header => {
+                    const headerName = this.props.alias[header] || U.capitialize(header);
+                    const sortedOn = header === this.state.sort;
+                    const className = sortedOn ?
+                        this.state.sortAscending ?
+                            'ascending' : 'descending' :
+                        null;
+
+                    return (
+                        <th key={header}
+                            className={className}
+                            onClick={this.updateSort.bind(this, header)}>{headerName}</th>
+                    );
+                }, this.state.headers)}
+            </tr>
+        );
+    }
+
+    /**
+     * Dispatches a provided componet and its props
+     * to be displayed in a lightbox.
+     *
+     * @param {String} id of entry
+     * @param {Function} Component react component
+     * @method renderDetails
+     * @return {Undefined} undefined
+     */
+    renderDetails(id, Component, props = {}) {
+        const data = getById(id, this.props.data);
+
+        if (Component) {
+            this.props.dispatchLightbox(Component, R.merge({
+                data: data,
+                onSubmit: this.props.resetLightbox
+            }, props));
         }
+    }
 
-        render() {
+    /**
+     * Removes an entry. If an alert prop is passed in the remove action,
+     * an alert will be dispatched prior to the remove action being executed.
+     *
+     * @param {String} id entry id
+     * @method remove
+     * @return {Undefined} undefined
+     */
+    remove(id) {
+        const rmAction = this.props.actions.remove;
+
+        if (rmAction.alert) {
+            this.props.dispatchAlert(rmAction.alert).then(() => {
+                rmAction.action(id);
+            });
+        } else {
+            rmAction.action(id);
+        }
+    }
+
+    /**
+     * Appends actions to each row if specified in the CMSTable API
+     *
+     * @param {Object} data for a row
+     * @param {String} id of record
+     * @method appendActions
+     * @return {Array} cells
+     */
+    appendActions(data, id) {
+        const actions = this.props.actions;
+
+        const details = (actions.details && id) ? (
+            <img
+                alt="Details Icon"
+                className="cms-table-icon"
+                src={`${IMG_BASE}/mag.svg`}
+                title={`${this.props.name} Details`}
+                onClick={this.renderDetails.bind(
+                    this,
+                    id,
+                    EntryDetailsLightbox
+                )}
+            />
+        ) : null;
+
+        const edit = (actions.edit && id) ? (
+            <img
+                alt="Edit Icon"
+                className="cms-table-icon"
+                src={`${IMG_BASE}/cog.svg`}
+                title={`Edit ${this.props.name}`}
+                onClick={this.renderDetails.bind(
+                    this,
+                    id,
+                    actions.edit.component,
+                    {action: actions.edit.action}
+                )}
+            />
+        ) : null;
+
+        const remove = (actions.remove && id) ? (
+            <img
+                alt="Trash Icon"
+                className="cms-table-icon"
+                src={`${IMG_BASE}/trash.svg`}
+                title={`Remove ${this.props.name}`}
+                onClick={this.remove.bind(this, id)}
+            />
+        ) : null;
+
+        const actionColumn = (
+            <td key="cms-actions">
+                {details}
+                {edit}
+                {remove}
+            </td>
+        );
+
+        return R.append(actionColumn, data);
+    }
+
+    /**
+     * Renders a single row of data
+     *
+     * @param {Object} record one row of data
+     * @method renderDataRow
+     * @return {JSX} row
+     */
+    renderDataRow(record) {
+        const data = U.mapIndexed((val, idx) => {
+            const dataPoint = record[val];
+
+            let displayData = dataPoint && this.props.format[val] ?
+                this.props.format[val](dataPoint) : dataPoint;
+
+            displayData = R.is(Object, displayData) ? '[OBJECT]' : displayData;
+
+            return <td key={idx}>{displayData}</td>;
+        }, this.state.headers);
+
+        return this.appendActions(data, record._id);
+    }
+
+    /**
+     * Renders the body of the table
+     *
+     * @method renderDataRows
+     * @return {JSX} table body
+     */
+    renderDataRows() {
+        const data = this.formatData(this.props.data);
+
+        return U.mapIndexed((record, idx) => {
+            const className = idx % 2 === 0 ? 'even' : 'odd';
+
             return (
-                <CMSTable
-                    actions={{
-                        details: this.props.showDetails,
-                        edit: {
-                            action: this.props.updateRecordAction,
-                            component: this.props.form
-                        },
-                        remove: {
-                            action: this.props.removeRecordAction,
-                            alert: this.props.removeRecordPrompt
-                        }
-                    }}
-                    alias={R.mergeAll(this.props.settings.aliases)}
-                    data={this.props.request.data}
-                    defaultSort={this.props.settings.defaultSort}
-                    filter={this.props.filter}
-                    format={{}}
-                    visableFields={this.props.settings.visableFields}
-                    name={this.props.recordName}
-                    dispatchLightbox={this.props.dispatchLightbox}
-                    resetLightbox={this.props.resetLightbox}
-                    dispatchAlert={this.props.dispatchAlert}
-                />
+                <tr className={className} key={record._id || idx}>
+                    {this.renderDataRow(record)}
+                </tr>
             );
-        }
+        }, data);
     }
 
-    /**
-     * `CMSView` is a *smart component* and is the view that the
-     * end user will see when looking at a cms endpoint. This
-     * wraps the key features of the CMS like providing UI for
-     * users to add records, edit table display, and view and modify
-     * table data.
-     *
-     * @class CMSView
-     */
-    class CMSView extends Component {
-
-        static propTypes = {
-            createRecordAction: PropTypes.func,
-            form: PropTypes.func,
-            onLoadAction: PropTypes.func.isRequired,
-            recordName: PropTypes.string,
-            removeRecordAction: PropTypes.func,
-            removeRecordPrompt: PropTypes.object,
-            title: PropTypes.string.isRequired
-        }
-
-        static defaultProps = {
-            title: `CMS ${cmsName}`
-        }
-
-        constructor(props) {
-            super(props);
-
-            this.state = {
-                filter: ''
-            }
-
-            this.updateFilter = this.updateFilter.bind(this);
-        }
-
-        componentDidMount() {
-            this.props.onLoadAction();
-        }
-
-        updateFilter(filter) {
-            this.setState({filter: filter});
-        }
-
-        render() {
-            return (
-                <div>
-                    <PageSubHeader title={`${this.props.title}`} />
-
-                    <AddRecordButton
-                        action={this.props.createRecordAction}
-                        dispatchLightbox={this.props.dispatchLightbox}
-                        resetLightbox={this.props.resetLightbox}
-                        form={this.props.form}
-                        name={this.props.recordName}
-                    />
-
-                    <EditTableButton
-                        action={this.props.updateCMSSetting.bind(this, cmsName)}
-                        dispatchLightbox={this.props.dispatchLightbox}
-                        resetLightbox={this.props.resetLightbox}
-                        data={this.props.request.data}
-                        settings={this.props.settings}
-                    />
-
-                    <CMSTabelSearcher
-                        onChange={this.updateFilter}
-                    />
-
-                    <CMSTableWrapper
-                        form={this.props.form}
-
-                        filter={this.state.filter}
-
-                        recordName={this.props.recordName}
-                        removeRecordAction={this.props.removeRecordAction}
-                        removeRecordPrompt={this.props.removeRecordPrompt}
-                        resetLightbox={this.props.resetLightbox}
-                        request={this.props.request}
-                        updateRecordAction={this.props.updateRecordAction}
-                        dispatchLightbox={this.props.dispatchLightbox}
-                        dispatchAlert={this.props.dispatchAlert}
-                        settings={this.props.settings}
-                    />
-                </div>
-            );
-        }
+    render() {
+        return (
+            <table className="cms-table">
+                <thead>
+                    {this.renderHeaders()}
+                </thead>
+                <tbody>
+                    {this.renderDataRows()}
+                </tbody>
+            </table>
+        );
     }
-
-    const mapStateToProps = state => {
-        return {
-            request: state[`${cmsName}Reducer`],
-            settings: Collection.getByPropName('name', cmsName, state.cmsReducer.data)
-        }
-    }
-
-    /**
-     * This method will clean props to pick out actions that
-     * will be registered with redux's action creator.
-     *
-     * @function filterActions
-     * @return {Object} filtered actions
-     */
-    const filterActions = () => {
-        return R.pick([
-            'createRecordAction',
-            'onLoadAction',
-            'removeRecordAction',
-            'updateRecordAction'
-        ], options);
-    }
-
-    const mergeDispatchAction = () => {
-        const passedInActions = filterActions();
-
-        const defaultActions = {
-            dispatchAlert: dispatchAlert,
-            dispatchLightbox: dispatchLightbox,
-            resetLightbox: resetLightbox,
-            updateCMSSetting: updateCMSSetting
-        }
-
-        return R.merge(defaultActions, passedInActions);
-    }
-
-    const addProps = (stateProps, dispatchProps, ownProps) => {
-        const filteredProps = R.pick([
-            'form',
-            'recordName',
-            'removeRecordPrompt',
-            'showDetails',
-            'title'
-        ], options);
-
-        return Object.assign({}, R.merge(ownProps, filteredProps), stateProps, dispatchProps);
-    }
-
-    return connect(
-        mapStateToProps,
-        mergeDispatchAction(),
-        addProps
-    )(CMSView);
 }
 
-export default cmsViewCreator;

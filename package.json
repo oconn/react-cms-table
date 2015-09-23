@@ -19,5 +19,12 @@
   "license": "MIT",
   "dependencies": {
     "react": "0.14.0-rc1"
+  },
+  "devDependencies": {
+    "chai": "3.3.0",
+    "mocha": "2.3.3"
+  },
+  "peerDependencies": {
+    "ramda": "0.17.1"
   }
 }
