@@ -2,9 +2,24 @@ import React, {Component, PropTypes} from 'react';
 import R from 'ramda';
 import * as U from 'utils';
 import {IMG_BASE} from 'constants';
-import {getById} from 'helpers/collection';
 import * as CMSHelpers from 'helpers/cms';
 import EntryDetailsLightbox from './entry_details';
+
+/* ********* Helper Methods *********** */
+
+/**
+ * @param {Int} id record id
+ * @param {Array} collection array of records
+ * @param {String} idName name od database id property (Optional)
+ * @function getById
+ * @return {Object} record
+ */
+const getById = (id, collection, idName = idPropName) => {
+    return R.find(R.propEq(idName, id))(collection);
+}
+
+/* ************************************ */
+
 
 /**
  * Flexable table that takes a data set and constructs a table

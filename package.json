@@ -2,7 +2,7 @@
   "name": "react-cms-table",
   "version": "1.0.0",
   "description": "React CMS Table",
-  "main": "src/index.js",
+  "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -17,6 +17,10 @@
     "url": "https://github.com/oconn/react-cms-table.git"
   },
   "license": "MIT",
+    "bugs": {
+    "url": "https://github.com/oconn/react-cms-table/issues"
+  },
+  "homepage": "https://github.com/oconn/react-cms-table#readme",
   "dependencies": {
     "react": "0.14.0-rc1"
   },
