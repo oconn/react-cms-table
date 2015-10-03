@@ -1,9 +1,8 @@
 import React, {Component, PropTypes} from 'react';
 import R from 'ramda';
-import * as U from 'utils';
-import {IMG_BASE} from 'constants';
-import * as CMSHelpers from 'helpers/cms';
+import * as U from 'micro-lib-utils';
 import EntryDetailsLightbox from './entry_details';
+import Cog from './icons/cog';
 
 /* ********* Helper Methods *********** */
 
@@ -18,6 +17,21 @@ const getById = (id, collection, idName = idPropName) => {
     return R.find(R.propEq(idName, id))(collection);
 }
 
+/**
+ * Returns an array of prop names for a given
+ * data set.
+ *
+ * @param {Array} data data
+ * @method getAllPropsFromData
+ * @return {Array} prop names
+ */
+const getAllPropsFromData = (data) => {
+    return R.reduce((memo, entry) => {
+        const entryHeaders = R.keys(entry);
+
+        return R.union(memo, entryHeaders);
+    }, [], data);
+}
 /* ************************************ */
 
 
@@ -91,7 +105,7 @@ export default class CMSTable extends Component {
             throw new Error('Data must be an array');
         }
 
-        const allHeaders = CMSHelpers.getAllPropsFromData(data);
+        const allHeaders = getAllPropsFromData(data);
 
         return R.filter(header => {
             return R.contains(header, this.props.visableFields);
