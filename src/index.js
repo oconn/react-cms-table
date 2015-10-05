@@ -1,6 +1,14 @@
 import React, {Component, PropTypes} from 'react';
 import R from 'ramda';
-import * as U from 'micro-lib-utils';
+// import * as U from 'micro-lib-utils';
+const U = {
+    capitialize: R.compose(
+        R.join(''),
+        R.adjust(R.toUpper, 0),
+        R.split('')
+    ),
+    mapIndexed: R.addIndex(R.map)
+}
 import EntryDetailsLightbox from './entry_details';
 import Cog from './icons/cog';
 
@@ -262,42 +270,45 @@ export default class CMSTable extends Component {
         const actions = this.props.actions;
 
         const details = (actions.details && id) ? (
-            <img
-                alt="Details Icon"
-                className="cms-table-icon"
-                src={`${IMG_BASE}/mag.svg`}
-                title={`${this.props.name} Details`}
-                onClick={this.renderDetails.bind(
-                    this,
-                    id,
-                    EntryDetailsLightbox
-                )}
-            />
+            <Cog />
+            // <img
+            //     alt="Details Icon"
+            //     className="cms-table-icon"
+            //     src={`${IMG_BASE}/mag.svg`}
+            //     title={`${this.props.name} Details`}
+            //     onClick={this.renderDetails.bind(
+            //         this,
+            //         id,
+            //         EntryDetailsLightbox
+            //     )}
+            // />
         ) : null;
 
         const edit = (actions.edit && id) ? (
-            <img
-                alt="Edit Icon"
-                className="cms-table-icon"
-                src={`${IMG_BASE}/cog.svg`}
-                title={`Edit ${this.props.name}`}
-                onClick={this.renderDetails.bind(
-                    this,
-                    id,
-                    actions.edit.component,
-                    {action: actions.edit.action}
-                )}
-            />
+            <Cog />
+            // <img
+            //     alt="Edit Icon"
+            //     className="cms-table-icon"
+            //     src={`${IMG_BASE}/cog.svg`}
+            //     title={`Edit ${this.props.name}`}
+            //     onClick={this.renderDetails.bind(
+            //         this,
+            //         id,
+            //         actions.edit.component,
+            //         {action: actions.edit.action}
+            //     )}
+            // />
         ) : null;
 
         const remove = (actions.remove && id) ? (
-            <img
-                alt="Trash Icon"
-                className="cms-table-icon"
-                src={`${IMG_BASE}/trash.svg`}
-                title={`Remove ${this.props.name}`}
-                onClick={this.remove.bind(this, id)}
-            />
+            <Cog />
+            // <img
+            //     alt="Trash Icon"
+            //     className="cms-table-icon"
+            //     src={`${IMG_BASE}/trash.svg`}
+            //     title={`Remove ${this.props.name}`}
+            //     onClick={this.remove.bind(this, id)}
+            // />
         ) : null;
 
         const actionColumn = (
