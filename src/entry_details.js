@@ -9,13 +9,13 @@ export default class EntryDetailsLightbox extends Component {
 
     constructor(props) {
         super(props);
+
+        this.state = {
+            json: ''
+        };
     }
 
     componentDidMount() {
-        this.updateJSON();
-    }
-
-    componentDidUpdate() {
         this.updateJSON();
     }
 
@@ -48,16 +48,14 @@ export default class EntryDetailsLightbox extends Component {
 
 
     updateJSON() {
-        const node = ReactDOM.findDOMNode(this.refs.json);
-
-        node.innerHTML = this.prettyPrint(this.props.data);
+        this.setState({
+            json: this.prettyPrint(this.props.data)
+        });
     }
 
     render() {
         return (
-            <div>
-                <pre className="json-output" ref="json" />
-            </div>
+            <pre className="json-output" dangerouslySetInnerHTML={{__html: this.state.json}} />
         );
     }
 }
